@@ -34,6 +34,7 @@ test-suite test
   main-is:             Spec.hs
   other-modules:       Control.Comonad.Cofree.Cofreer.Spec
                      , Control.Monad.Free.Freer.Spec
+                     , Control.Monad.Trans.Free.Freer.Spec
                      , Test.Hspec.LeanCheck
   build-depends:       base
                      , freer-cofreer
