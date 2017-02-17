@@ -57,7 +57,7 @@ instance (Eq1 f, Eq a, Eq b) => Eq (FreerF f a b) where
 instance Show1 f => Show2 (FreerF f) where
   liftShowsPrec2 sp1 _ sp2 sa2 d f = case f of
     Return a -> showsUnaryWith sp1 "Return" d a
-    Then r t -> showsBinaryWith (const showString) (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) "Free" d "id" r
+    Then r t -> showsBinaryWith (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "Free" d r "id"
 
 instance (Show1 f, Show a) => Show1 (FreerF f a) where
   liftShowsPrec = liftShowsPrec2 showsPrec showList
