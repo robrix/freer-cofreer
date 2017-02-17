@@ -12,10 +12,10 @@ data OpF a where
 type Op = Freer OpF
 
 write :: Op ()
-write = liftF . Write
+write = Write `Then` Return
 
 read :: Op String
-read = liftF . Read
+read = Read `Then` Return
 
 greeting :: Op ()
 greeting = do
