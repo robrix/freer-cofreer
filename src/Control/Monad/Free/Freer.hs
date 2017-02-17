@@ -21,34 +21,32 @@ import Data.Functor.Classes
 import Data.Functor.Foldable
 import Data.Functor.Listable
 
-
 newtype Freer f a = Freer { runFreer :: FreerF f a (Freer f a) }
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
-iter algebra = iterFreer ((algebra .) . fmap)
+iter algebra = iterFreer ((algebra .) . flip fmap)
 
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = cata $ \ r -> case r of
   Pure a -> pure a
-  Free t r -> algebra (t <$> r)
+  Free r t -> algebra (t <$> r)
 
-iterFreer :: (forall x. (x -> a) -> f x -> a) -> Freer f a -> a
+iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
   Pure a -> a
-  Free t r -> algebra t r
+  Free r t -> algebra r t
 
-iterFreerA :: Applicative m => (forall x. (x -> m a) -> f x -> m a) -> Freer f a -> m a
+iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
 iterFreerA algebra = cata $ \ r -> case r of
   Pure a -> pure a
-  Free t r -> algebra t r
+  Free r t -> algebra r t
 
 hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
   where go = Freer . fmap go . hoistFreerF f . runFreer
 
-
 liftF :: f a -> Freer f a
-liftF = Freer . Free pure
+liftF = Freer . flip Free pure
 
 
 -- Instances
@@ -60,16 +58,16 @@ instance Applicative (Freer f) where
   pure = Freer . Pure
   Freer g <*> a = case g of
     Pure f -> fmap f a
-    Free t r -> Freer (Free ((<*> a) . t) r)
+    Free r t -> Freer (Free r ((<*> a) . t))
 
 instance Monad (Freer f) where
   return = pure
   Freer g >>= f = case g of
     Pure a -> f a
-    Free t r -> Freer (Free (t >=> f) r)
+    Free r t -> Freer (Free r (t >=> f))
 
 instance MonadFree f (Freer f) where
-  wrap = Freer . Free id
+  wrap = Freer . liftFreerF
 
 
 instance Foldable f => Foldable (Freer f) where
@@ -78,8 +76,8 @@ instance Foldable f => Foldable (Freer f) where
 instance Traversable f => Traversable (Freer f) where
   traverse f = go
     where go g = case runFreer g of
-            Pure a -> Freer . Pure <$> f a
-            Free t r -> Freer . Free id <$> traverse (go . t) r
+            Pure a -> pure <$> f a
+            Free r t -> wrap <$> traverse (go . t) r
 
 
 type instance Base (Freer f a) = FreerF f a
@@ -94,13 +92,11 @@ instance Show1 f => Show1 (Freer f) where
 instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
 
-
 instance Eq1 f => Eq1 (Freer f) where
   liftEq eqA = go where go (Freer f1) (Freer f2) = liftEq2 eqA go f1 f2
 
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
   (==) = liftEq (==)
-
 
 instance Listable1 f => Listable1 (Freer f) where
   liftTiers t1 = go
