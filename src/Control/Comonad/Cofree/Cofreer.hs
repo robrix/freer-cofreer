@@ -26,21 +26,18 @@ newtype Cofreer f a = Cofreer { runCofreer :: CofreerF f a (Cofreer f a) }
 
 infixr 5 `cowrap`
 cowrap :: a -> f (Cofreer f a) -> Cofreer f a
-cowrap a r = Cofreer (Cofree a id r)
+cowrap a r = Cofreer (Cofree a r id)
 
 coiter :: Functor f => (b -> f b) -> b -> Cofreer f b
 coiter f = unfold (id &&& f)
 
 unfold :: Functor f => (b -> (a, f b)) -> b -> Cofreer f a
-unfold f c = let (x, d) = f c in Cofreer (Cofree x (unfold f) d)
+unfold f c = let (x, d) = f c in Cofreer (Cofree x d (unfold f))
 
 
 hoistCofreer :: (forall a. f a -> g a) -> Cofreer f b -> Cofreer g b
 hoistCofreer f = go
   where go = Cofreer . fmap go . hoistCofreerF f . runCofreer
-
-hoistCofreerF :: (forall a. f a -> g a) -> CofreerF f b c -> CofreerF g b c
-hoistCofreerF f (Cofree a t r) = Cofree a t (f r)
 
 
 -- Instances
@@ -50,7 +47,7 @@ instance Functor (Cofreer f) where
 
 instance Comonad (Cofreer f) where
   extract (Cofreer (Cofree a _ _)) = a
-  extend f c@(Cofreer (Cofree _ t r)) = Cofreer (Cofree (f c) (extend f . t) r)
+  extend f c@(Cofreer (Cofree _ r t)) = Cofreer (Cofree (f c) r (extend f . t))
 
 instance Functor f => ComonadCofree f (Cofreer f) where
   unwrap = tailF . runCofreer
@@ -60,7 +57,7 @@ instance Foldable f => Foldable (Cofreer f) where
   foldMap f (Cofreer c) = mappend (f (headF c)) (foldMap (foldMap f) c)
 
 instance Traversable f => Traversable (Cofreer f) where
-  traverse f (Cofreer (Cofree a t r)) = cowrap <$> f a <*> traverse (traverse f . t) r
+  traverse f (Cofreer (Cofree a r t)) = cowrap <$> f a <*> traverse (traverse f . t) r
 
 
 type instance Base (Cofreer f a) = CofreerF f a
