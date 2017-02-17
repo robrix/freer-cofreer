@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Control.Comonad.Cofree.Cofreer
+                     , Control.Comonad.Trans.Cofree.Cofreer
                      , Control.Monad.Free.Freer
                      , Control.Monad.Trans.Free.Freer
                      , Data.Functor.Listable
@@ -33,6 +34,7 @@ test-suite test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       Control.Comonad.Cofree.Cofreer.Spec
+                     , Control.Comonad.Trans.Cofree.Cofreer.Spec
                      , Control.Monad.Free.Freer.Spec
                      , Control.Monad.Trans.Free.Freer.Spec
                      , Test.Hspec.LeanCheck
