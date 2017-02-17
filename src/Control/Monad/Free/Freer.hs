@@ -20,7 +20,7 @@ import Data.Functor.Listable
 
 data Freer f a where
   Return :: a -> Freer f a
-  Free :: f x -> (x -> Freer f a) -> Freer f a
+  Then :: f x -> (x -> Freer f a) -> Freer f a
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
 iter algebra = iterFreer ((algebra .) . flip fmap)
@@ -28,26 +28,26 @@ iter algebra = iterFreer ((algebra .) . flip fmap)
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = cata $ \ r -> case r of
   T.Return a -> pure a
-  T.Free r t -> algebra (t <$> r)
+  T.Then r t -> algebra (t <$> r)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
   T.Return a -> a
-  T.Free r t -> algebra r t
+  T.Then r t -> algebra r t
 
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
 iterFreerA algebra = cata $ \ r -> case r of
   T.Return a -> pure a
-  T.Free r t -> algebra r t
+  T.Then r t -> algebra r t
 
 hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
   where go r = case r of
           Return a -> Return a
-          Free r t -> Free (f r) (go . t)
+          Then r t -> Then (f r) (go . t)
 
 liftF :: f a -> Freer f a
-liftF = flip Free pure
+liftF = flip Then pure
 
 
 -- Instances
@@ -56,53 +56,53 @@ instance Functor (Freer f) where
   fmap f = go
     where go r = case r of
             Return a -> Return (f a)
-            Free r t -> Free r (go . t)
+            Then r t -> Then r (go . t)
 
 instance Applicative (Freer f) where
   pure = Return
   g <*> a = case g of
     Return f -> fmap f a
-    Free r t -> Free r ((<*> a) . t)
+    Then r t -> Then r ((<*> a) . t)
 
 instance Monad (Freer f) where
   return = pure
   g >>= f = case g of
     Return a -> f a
-    Free r t -> Free r (t >=> f)
+    Then r t -> Then r (t >=> f)
 
 instance MonadFree f (Freer f) where
-  wrap = flip Free id
+  wrap = flip Then id
 
 
 instance Foldable f => Foldable (Freer f) where
   foldMap f = go
     where go r = case r of
             Return a -> f a
-            Free r t -> foldMap (go . t) r
+            Then r t -> foldMap (go . t) r
 
 instance Traversable f => Traversable (Freer f) where
   traverse f = go
     where go g = case g of
             Return a -> pure <$> f a
-            Free r t -> wrap <$> traverse (go . t) r
+            Then r t -> wrap <$> traverse (go . t) r
 
 
 type instance Base (Freer f a) = T.FreerF f a
 
 instance Recursive (Freer f a) where
   project (Return a) = T.Return a
-  project (Free r t) = T.Free r t
+  project (Then r t) = T.Then r t
 
 instance Corecursive (Freer f a) where
   embed (T.Return a) = Return a
-  embed (T.Free r t) = Free r t
+  embed (T.Then r t) = Then r t
 
 
 instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
     where go d r = case r of
             Return a -> showsUnaryWith sp "Return" d a
-            Free r t -> showsBinaryWith (const showString) (liftShowsPrec (\ i -> go i . t) (liftShowList sp sl . fmap t)) "Freer" d "id" r
+            Then r t -> showsBinaryWith (const showString) (liftShowsPrec (\ i -> go i . t) (liftShowList sp sl . fmap t)) "Then" d "id" r
 
 instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
@@ -111,7 +111,7 @@ instance Eq1 f => Eq1 (Freer f) where
   liftEq eqA = go
     where go r s = case (r, s) of
             (Return a1, Return a2) -> eqA a1 a2
-            (Free r1 t1, Free r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
+            (Then r1 t1, Then r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
             _ -> False
 
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
