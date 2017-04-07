@@ -36,7 +36,7 @@ instance Traversable f => Traversable (CofreerF f a) where
 
 
 instance Show1 f => Show2 (CofreerF f) where
-  liftShowsPrec2 sp1 _ sp2 sa2 d (Cofree a r t) = showsTernaryWith sp1 (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "Cofree" d a r "id"
+  liftShowsPrec2 sp1 _ sp2 sa2 d (Cofree a r t) = showsTernaryWith sp1 (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "Cofree" d a r "_"
     where showsTernaryWith :: (Int -> a -> ShowS) -> (Int -> b -> ShowS) -> (Int -> c -> ShowS) -> String -> Int -> a -> b -> c -> ShowS
           showsTernaryWith sp1 sp2 sp3 name d x y z = showParen (d > 10) $ showString name . showChar ' ' . sp1 11 x . showChar ' ' . sp2 11 y . showChar ' ' . sp3 11 z
 
