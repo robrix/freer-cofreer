@@ -23,7 +23,7 @@ spec = do
           test 0
           set 1
           test 1
-          pure ()) `shouldBe` "Set 0\nTest 0\nSet 1\nTest 1\nReturn ()"
+          pure ()) `shouldBe` "Then (Set 0) (Then (Test 0) (Then (Set 1) (Then (Test 1) (Return ()) _) _) _) _"
 
 
 data Instr a where
@@ -38,5 +38,5 @@ test i = Test i `Then` return
 
 instance Show1 Instr where
   liftShowsPrec sp _ d i = case i of
-    Set i -> showsUnaryWith showsPrec "Set" d i . showChar '\n' . sp d ()
-    Test i -> showsUnaryWith showsPrec "Test" d i . showChar '\n' . sp d False
+    Set i -> showsUnaryWith showsPrec "Set" d i . showChar ' ' . sp d ()
+    Test i -> showsUnaryWith showsPrec "Test" d i . showChar ' ' . sp d False
