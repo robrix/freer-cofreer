@@ -22,6 +22,8 @@ data Freer f a where
   Return :: a -> Freer f a
   Then :: f x -> (x -> Freer f a) -> Freer f a
 
+infixl 1 `Then`
+
 iter :: Functor f => (f a -> a) -> Freer f a -> a
 iter algebra = iterFreer ((algebra .) . flip fmap)
 
