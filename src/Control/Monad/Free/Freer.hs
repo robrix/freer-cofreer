@@ -10,6 +10,7 @@ module Control.Monad.Free.Freer
 , wrap
 ) where
 
+import Control.Applicative
 import Control.Monad ((>=>))
 import Control.Monad.Free.Class hiding (liftF)
 import qualified Control.Monad.Trans.Free.Freer as T
@@ -65,6 +66,10 @@ instance Applicative (Freer f) where
   g <*> a = case g of
     Return f -> fmap f a
     Then r t -> Then r ((<*> a) . t)
+
+instance Alternative f => Alternative (Freer f) where
+  empty = wrap empty
+  a <|> b = wrap (pure a <|> pure b)
 
 instance Monad (Freer f) where
   return = pure
