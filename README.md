@@ -11,8 +11,8 @@ data OpF a where
 
 type Op = Freer OpF
 
-write :: Op ()
-write = Write `Then` Return
+write :: String -> Op ()
+write s = Write s `Then` Return
 
 read :: Op String
 read = Read `Then` Return
