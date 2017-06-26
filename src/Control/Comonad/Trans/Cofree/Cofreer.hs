@@ -10,9 +10,11 @@ data CofreerF f a b where
 
 headF :: CofreerF f a b -> a
 headF (Cofree a _ _) = a
+{-# INLINE headF #-}
 
 tailF :: Functor f => CofreerF f a b -> f b
 tailF (Cofree _ r t) = t <$> r
+{-# INLINE tailF #-}
 
 
 hoistCofreerF :: (forall a. f a -> g a) -> CofreerF f b c -> CofreerF g b c
@@ -23,16 +25,20 @@ hoistCofreerF f (Cofree a r t) = Cofree a (f r) t
 
 instance Bifunctor (CofreerF f) where
   bimap f g (Cofree a r t) = Cofree (f a) r (g . t)
+  {-# INLINE bimap #-}
 
 instance Functor (CofreerF f a) where
   fmap = second
+  {-# INLINE fmap #-}
 
 
 instance Foldable f => Foldable (CofreerF f a) where
   foldMap f (Cofree _ r t) = foldMap (f . t) r
+  {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (CofreerF f a) where
   traverse f (Cofree a r t) = flip (Cofree a) id <$> traverse (f . t) r
+  {-# INLINE traverse #-}
 
 
 instance Show1 f => Show2 (CofreerF f) where

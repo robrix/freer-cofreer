@@ -42,31 +42,38 @@ hoistCofreer f = go
 instance Functor (Cofreer f) where
   fmap f = go
     where go (Cofree a r t) = Cofree (f a) r (go . t)
+  {-# INLINE fmap #-}
 
 instance Comonad (Cofreer f) where
   extract (Cofree a _ _) = a
+  {-# INLINE extract #-}
   extend f c@(Cofree _ r t) = Cofree (f c) r (extend f . t)
 
 instance Functor f => ComonadCofree f (Cofreer f) where
   unwrap (Cofree _ r t) = fmap t r
+  {-# INLINE unwrap #-}
 
 
 instance Foldable f => Foldable (Cofreer f) where
   foldMap f = go
     where go (Cofree a r t) = mappend (f a) (foldMap (go . t) r)
+  {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (Cofreer f) where
   traverse f = go
     where go (Cofree a r t) = cowrap <$> f a <*> traverse (go . t) r
+  {-# INLINE traverse #-}
 
 
 type instance Base (Cofreer f a) = T.CofreerF f a
 
 instance Recursive (Cofreer f a) where
   project (Cofree a r t) = T.Cofree a r t
+  {-# INLINE project #-}
 
 instance Corecursive (Cofreer f a) where
   embed (T.Cofree a r t) = Cofree a r t
+  {-# INLINE embed #-}
 
 
 instance Show1 f => Show1 (Cofreer f) where

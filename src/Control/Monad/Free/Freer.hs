@@ -59,21 +59,25 @@ instance Functor (Freer f) where
     where go r = case r of
             Return a -> Return (f a)
             Then r t -> Then r (go . t)
+  {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
   pure = Return
+  {-# INLINE pure #-}
   g <*> a = case g of
     Return f -> fmap f a
     Then r t -> Then r ((<*> a) . t)
 
 instance Monad (Freer f) where
   return = pure
+  {-# INLINE return #-}
   g >>= f = case g of
     Return a -> f a
     Then r t -> Then r (t >=> f)
 
 instance MonadFree f (Freer f) where
   wrap = flip Then id
+  {-# INLINE wrap #-}
 
 
 instance Foldable f => Foldable (Freer f) where
@@ -81,12 +85,14 @@ instance Foldable f => Foldable (Freer f) where
     where go r = case r of
             Return a -> f a
             Then r t -> foldMap (go . t) r
+  {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (Freer f) where
   traverse f = go
     where go g = case g of
             Return a -> pure <$> f a
             Then r t -> wrap <$> traverse (go . t) r
+  {-# INLINE traverse #-}
 
 
 type instance Base (Freer f a) = T.FreerF f a
@@ -94,10 +100,12 @@ type instance Base (Freer f a) = T.FreerF f a
 instance Recursive (Freer f a) where
   project (Return a) = T.Return a
   project (Then r t) = T.Then r t
+  {-# INLINE project #-}
 
 instance Corecursive (Freer f a) where
   embed (T.Return a) = Return a
   embed (T.Then r t) = Then r t
+  {-# INLINE embed #-}
 
 
 instance Show1 f => Show1 (Freer f) where
