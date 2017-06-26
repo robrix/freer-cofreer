@@ -25,20 +25,24 @@ instance Bifunctor (FreerF f) where
   bimap f g r = case r of
     Return a -> Return (f a)
     Then r t -> Then r (g . t)
+  {-# INLINE bimap #-}
 
 instance Functor (FreerF f a) where
   fmap = second
+  {-# INLINE fmap #-}
 
 
 instance Foldable f => Foldable (FreerF f a) where
   foldMap f g = case g of
     Return _ -> mempty
     Then r t -> foldMap (f . t) r
+  {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
   traverse f g = case g of
     Return a -> pure (Return a)
     Then r t -> flip Then id <$> traverse (f . t) r
+  {-# INLINE traverse #-}
 
 
 instance Eq1 f => Eq2 (FreerF f) where
