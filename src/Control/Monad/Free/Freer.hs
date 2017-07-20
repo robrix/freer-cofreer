@@ -11,6 +11,7 @@ module Control.Monad.Free.Freer
 , iterFreer
 , iterFreerA
 , runFreer
+, stepFreer
 , wrap
 ) where
 
@@ -76,6 +77,15 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+
+-- | Run a single step of a program by refinement, returning 'Either' its @result@ or the next step.
+stepFreer :: (forall x. f x -> Freer f x)
+          -> Freer f result
+          -> Either result (Freer f result)
+stepFreer refine = go
+  where go r = case r of
+          Return a -> Left a
+          step `Then` yield -> Right (refine step >>= yield)
 
 
 -- Instances
