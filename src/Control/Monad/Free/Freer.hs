@@ -129,10 +129,10 @@ instance Functor (Freer f) where
 instance Applicative (Freer f) where
   pure = Return
   {-# INLINE pure #-}
-  g <*> a = case g of
-    Return f -> fmap f a
-    Then r t -> Then r ((<*> a) . t)
 
+  Return f <*> param = fmap f param
+  Then action yield <*> param = Then action ((<*> param) . yield)
+  {-# INLINE (<*>) #-}
 
 instance Monad (Freer f) where
   return = pure
