@@ -19,11 +19,9 @@ library
   hs-source-dirs:      src
   exposed-modules:     Control.Comonad.Cofree.Cofreer
                      , Control.Monad.Free.Freer
-  other-modules:       Data.Functor.Listable
   build-depends:       base >= 4.7 && < 5
                      , comonad
                      , free
-                     , leancheck
                      , recursion-schemes
   default-language:    Haskell2010
 
@@ -31,8 +29,9 @@ test-suite test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Control.Monad.Free.Freer.Spec
-                     , Control.Monad.Trans.Free.Freer.Spec
+  other-modules:       Control.Comonad.Cofree.Cofreer.Spec
+                     , Control.Monad.Free.Freer.Spec
+                     , Data.Functor.Listable
                      , Test.Hspec.LeanCheck
   build-depends:       base
                      , freer-cofreer

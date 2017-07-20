@@ -1,12 +1,15 @@
 {-# LANGUAGE FlexibleInstances, GADTs, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
 module Control.Monad.Free.Freer
 ( Freer(..)
+, liftF
+, hoistFreer
+, FreerF(..)
+, liftFreerF
+, hoistFreerF
 , iter
 , iterA
 , iterFreer
 , iterFreerA
-, hoistFreer
-, liftF
 , wrap
 ) where
 
@@ -15,7 +18,6 @@ import Control.Monad.Free.Class hiding (liftF)
 import Data.Bifunctor
 import Data.Functor.Classes
 import Data.Functor.Foldable
-import Data.Functor.Listable
 
 data Freer f a where
   Return :: a -> Freer f a
@@ -41,7 +43,6 @@ data FreerF f a b where
 liftFreerF :: f b -> FreerF f a b
 liftFreerF action = action `ThenF` id
 {-# INLINE liftFreerF #-}
-
 
 hoistFreerF :: (forall a. f a -> g a) -> FreerF f b c -> FreerF g b c
 hoistFreerF f r = case r of
@@ -130,12 +131,6 @@ instance Eq1 f => Eq1 (Freer f) where
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
   (==) = liftEq (==)
 
-instance Listable1 f => Listable1 (Freer f) where
-  liftTiers t1 = go where go = liftCons1 t1 Return \/ liftCons1 (liftTiers go) wrap
-
-instance (Listable a, Listable1 f) => Listable (Freer f a) where
-  tiers = liftTiers tiers
-
 
 instance Functor (FreerF f a) where
   fmap _ (ReturnF a) = ReturnF a
@@ -185,16 +180,6 @@ instance (Show1 f, Show a) => Show1 (FreerF f a) where
 
 instance (Show1 f, Show a, Show b) => Show (FreerF f a b) where
   showsPrec = liftShowsPrec showsPrec showList
-
-
-instance Listable1 f => Listable2 (FreerF f) where
-  liftTiers2 t1 t2 = liftCons1 t1 ReturnF \/ liftCons1 (liftTiers t2) liftFreerF
-
-instance (Listable a, Listable1 f) => Listable1 (FreerF f a) where
-  liftTiers = liftTiers2 tiers
-
-instance (Listable a, Listable b, Listable1 f) => Listable (FreerF f a b) where
-  tiers = liftTiers tiers
 
 
 type instance Base (Freer f a) = FreerF f a

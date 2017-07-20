@@ -2,9 +2,12 @@
 module Control.Comonad.Cofree.Cofreer
 ( Cofreer(..)
 , cowrap
+, hoistCofreer
+, CofreerF(..)
+, headF
+, tailF
 , coiter
 , unfold
-, hoistCofreer
 , extract
 , unwrap
 ) where
@@ -15,7 +18,6 @@ import Control.Comonad.Cofree.Class
 import Data.Bifunctor
 import Data.Functor.Classes
 import Data.Functor.Foldable hiding (unfold)
-import Data.Functor.Listable
 
 data Cofreer f a where
   Cofree :: a -> f x -> (x -> Cofreer f a) -> Cofreer f a
@@ -100,14 +102,6 @@ instance (Eq1 f, Eq a) => Eq (Cofreer f a) where
   (==) = liftEq (==)
 
 
-instance Listable1 f => Listable1 (Cofreer f) where
-  liftTiers t1 = go
-    where go = liftCons2 t1 (liftTiers go) (\ r t -> Cofree r t id)
-
-instance (Listable a, Listable1 f) => Listable (Cofreer f a) where
-  tiers = liftTiers tiers
-
-
 instance Bifunctor (CofreerF f) where
   bimap f g (CofreeF a r t) = CofreeF (f a) r (g . t)
   {-# INLINE bimap #-}
@@ -146,16 +140,6 @@ instance (Eq1 f, Eq a) => Eq1 (CofreerF f a) where
 
 instance (Eq1 f, Eq a, Eq b) => Eq (CofreerF f a b) where
   (==) = liftEq (==)
-
-
-instance Listable1 f => Listable2 (CofreerF f) where
-  liftTiers2 t1 t2 = liftCons2 t1 (liftTiers t2) (\ a r -> CofreeF a r id)
-
-instance (Listable a, Listable1 f) => Listable1 (CofreerF f a) where
-  liftTiers = liftTiers2 tiers
-
-instance (Listable a, Listable b, Listable1 f) => Listable (CofreerF f a b) where
-  tiers = liftTiers tiers
 
 
 type instance Base (Cofreer f a) = CofreerF f a
