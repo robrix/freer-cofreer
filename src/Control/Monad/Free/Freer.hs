@@ -19,7 +19,7 @@ module Control.Monad.Free.Freer
 , wrap
 ) where
 
-import Control.Monad ((>=>))
+import Control.Monad ((<=<))
 import Control.Monad.Free.Class hiding (liftF)
 import Data.Bifunctor
 import Data.Functor.Classes
@@ -146,9 +146,9 @@ instance Monad (Freer f) where
   return = pure
   {-# INLINE return #-}
 
-  g >>= f = case g of
-    Return a -> f a
-    Then r t -> Then r (t >=> f)
+  Return a >>= f = f a
+  Then r f >>= g = Then r (g <=< f)
+  {-# INLINE (>>=) #-}
 
 instance MonadFree f (Freer f) where
   wrap = flip Then id
