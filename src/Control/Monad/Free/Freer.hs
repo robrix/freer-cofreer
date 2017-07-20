@@ -54,9 +54,7 @@ iter :: Functor f => (f a -> a) -> Freer f a -> a
 iter algebra = iterFreer ((algebra .) . flip fmap)
 
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
-iterA algebra = cata $ \ r -> case r of
-  ReturnF a -> pure a
-  ThenF r t -> algebra (t <$> r)
+iterA algebra = iterFreerA ((algebra .) . flip fmap)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
