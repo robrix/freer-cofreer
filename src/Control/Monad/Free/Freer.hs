@@ -138,6 +138,10 @@ instance Applicative (Freer f) where
   Then r f *> a = Then r ((*> a) . f)
   {-# INLINE (*>) #-}
 
+  Return a <* b = b *> Return a
+  Then r f <* a = Then r ((<* a) . f)
+  {-# INLINE (<*) #-}
+
 instance Monad (Freer f) where
   return = pure
   {-# INLINE return #-}
