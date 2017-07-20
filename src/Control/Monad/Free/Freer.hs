@@ -27,6 +27,12 @@ liftF :: f a -> Freer f a
 liftF action = action `Then` return
 {-# INLINE liftF #-}
 
+hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
+hoistFreer f = go
+  where go r = case r of
+          Return a -> Return a
+          Then r t -> Then (f r) (go . t)
+
 
 data FreerF f a b where
   ReturnF :: a -> FreerF f a b
@@ -60,12 +66,6 @@ iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a
 iterFreerA algebra = cata $ \ r -> case r of
   ReturnF a -> pure a
   ThenF r t -> algebra r t
-
-hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
-hoistFreer f = go
-  where go r = case r of
-          Return a -> Return a
-          Then r t -> Then (f r) (go . t)
 
 
 -- Instances

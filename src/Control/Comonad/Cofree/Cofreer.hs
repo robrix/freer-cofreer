@@ -26,6 +26,11 @@ cowrap :: a -> f (Cofreer f a) -> Cofreer f a
 cowrap a r = Cofree a r id
 {-# INLINE cowrap #-}
 
+hoistCofreer :: (forall a. f a -> g a) -> Cofreer f b -> Cofreer g b
+hoistCofreer f = go
+  where go (Cofree a r t) = Cofree a (f r) (go . t)
+
+
 data CofreerF f a b where
   CofreeF :: a -> f x -> (x -> b) -> CofreerF f a b
 
@@ -47,11 +52,6 @@ coiter f = unfold (id &&& f)
 
 unfold :: Functor f => (b -> (a, f b)) -> b -> Cofreer f a
 unfold f c = let (x, d) = f c in Cofree x d (unfold f)
-
-
-hoistCofreer :: (forall a. f a -> g a) -> Cofreer f b -> Cofreer g b
-hoistCofreer f = go
-  where go (Cofree a r t) = Cofree a (f r) (go . t)
 
 
 -- Instances
