@@ -12,6 +12,7 @@ module Control.Monad.Free.Freer
 , iterFreerA
 , runFreer
 , stepFreer
+, freerSteps
 , wrap
 ) where
 
@@ -86,6 +87,17 @@ stepFreer refine = go
   where go r = case r of
           Return a -> Left a
           step `Then` yield -> Right (refine step >>= yield)
+
+-- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
+--
+--   The steps are unfolded lazily, making this suitable for stepwise evaluation of nonterminating programs.
+freerSteps :: (forall x. f x -> Freer f x)
+           -> Freer f result
+           -> [Freer f result]
+freerSteps refine = go
+  where go r = case stepFreer refine r of
+          Left a -> [Return a]
+          Right step -> step : go step
 
 
 -- Instances
