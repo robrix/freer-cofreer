@@ -160,9 +160,8 @@ instance MonadFree f (Freer f) where
 
 instance Foldable f => Foldable (Freer f) where
   foldMap f = go
-    where go r = case r of
-            Return a -> f a
-            Then r t -> foldMap (go . t) r
+    where go (Return a) = f a
+          go (Then r t) = foldMap (go . t) r
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (Freer f) where
