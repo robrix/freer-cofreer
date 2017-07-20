@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, GADTs, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, GADTs, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, TypeFamilies #-}
 module Control.Monad.Free.Freer
 ( Freer(..)
 , liftF
@@ -10,6 +10,7 @@ module Control.Monad.Free.Freer
 , iterA
 , iterFreer
 , iterFreerA
+, runFreer
 , wrap
 ) where
 
@@ -65,6 +66,16 @@ iterFreer algebra = cata $ \ r -> case r of
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
 iterFreerA algebra r = iterFreer algebra (fmap pure r)
 {-# INLINE iterFreerA #-}
+
+
+-- | Run a program to completion by repeated refinement, and return its result.
+runFreer :: forall f result
+         .  (forall x. f x -> Freer f x)
+         -> Freer f result
+         -> result
+runFreer refine = go
+  where go :: Freer f x -> x
+        go = iterFreer (flip ($) . go . refine)
 
 
 -- Instances
