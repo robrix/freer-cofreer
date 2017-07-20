@@ -62,9 +62,8 @@ iterFreer algebra = cata $ \ r -> case r of
   ThenF r t -> algebra r t
 
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
-iterFreerA algebra = cata $ \ r -> case r of
-  ReturnF a -> pure a
-  ThenF r t -> algebra r t
+iterFreerA algebra r = iterFreer algebra (fmap pure r)
+{-# INLINE iterFreerA #-}
 
 
 -- Instances
