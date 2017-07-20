@@ -166,9 +166,8 @@ instance Foldable f => Foldable (Freer f) where
 
 instance Traversable f => Traversable (Freer f) where
   traverse f = go
-    where go g = case g of
-            Return a -> pure <$> f a
-            Then r t -> wrap <$> traverse (go . t) r
+    where go (Return a) = pure <$> f a
+          go (Then r t) = wrap <$> traverse (go . t) r
   {-# INLINE traverse #-}
 
 
