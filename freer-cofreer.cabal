@@ -31,9 +31,7 @@ test-suite test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Control.Comonad.Cofree.Cofreer.Spec
-                     , Control.Comonad.Trans.Cofree.Cofreer.Spec
-                     , Control.Monad.Free.Freer.Spec
+  other-modules:       Control.Monad.Free.Freer.Spec
                      , Control.Monad.Trans.Free.Freer.Spec
                      , Test.Hspec.LeanCheck
   build-depends:       base
