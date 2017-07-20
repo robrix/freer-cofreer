@@ -20,7 +20,6 @@ library
   exposed-modules:     Control.Comonad.Cofree.Cofreer
                      , Control.Comonad.Trans.Cofree.Cofreer
                      , Control.Monad.Free.Freer
-                     , Control.Monad.Trans.Free.Freer
                      , Data.Functor.Listable
   build-depends:       base >= 4.7 && < 5
                      , comonad
