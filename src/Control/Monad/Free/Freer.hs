@@ -15,6 +15,7 @@ module Control.Monad.Free.Freer
 , freerSteps
 , retract
 , cutoff
+, foldFreer
 , wrap
 ) where
 
@@ -111,6 +112,9 @@ cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
 cutoff n (Then a f) = Then a (cutoff (pred n) . f)
 cutoff _ r = Right <$> r
+
+foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
+foldFreer f = retract . hoistFreer f
 
 
 -- Instances
