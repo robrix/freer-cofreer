@@ -14,6 +14,7 @@ module Control.Monad.Free.Freer
 , stepFreer
 , freerSteps
 , retract
+, cutoff
 , wrap
 ) where
 
@@ -105,6 +106,11 @@ retract :: Monad m => Freer m a -> m a
 retract r = case r of
   Return a -> return a
   Then a f -> a >>= retract . f
+
+cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
+cutoff n r | n <= 0 = return (Left r)
+cutoff n (Then a f) = Then a (cutoff (pred n) . f)
+cutoff _ r = Right <$> r
 
 
 -- Instances
