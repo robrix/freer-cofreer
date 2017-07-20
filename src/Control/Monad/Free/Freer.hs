@@ -24,26 +24,30 @@ import Control.Monad.Free.Class hiding (liftF)
 import Data.Bifunctor
 import Data.Functor.Classes
 import Data.Functor.Foldable
+import Text.Show (showListWith)
 
 data Freer f a where
   Return :: a -> Freer f a
+  Map :: (b -> a) -> f b -> Freer f a
   Then :: f b -> (b -> Freer f a) -> Freer f a
 
 infixl 1 `Then`
 
 liftF :: f a -> Freer f a
-liftF action = action `Then` return
+liftF action = Map id action
 {-# INLINE liftF #-}
 
 hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
   where go r = case r of
           Return a -> Return a
+          Map g a -> Map g (f a)
           Then r t -> Then (f r) (go . t)
 
 
 data FreerF f a r where
   ReturnF :: a -> FreerF f a r
+  MapF :: (b -> a) -> f b -> FreerF f a r
   ThenF :: f b -> (b -> r) -> FreerF f a r
 
 liftFreerF :: f b -> FreerF f a b
@@ -53,6 +57,7 @@ liftFreerF action = action `ThenF` id
 hoistFreerF :: (forall a. f a -> g a) -> FreerF f b c -> FreerF g b c
 hoistFreerF f r = case r of
   ReturnF a -> ReturnF a
+  MapF g a -> MapF g (f a)
   ThenF r t -> ThenF (f r) t
 
 
@@ -65,6 +70,7 @@ iterA algebra = iterFreerA ((algebra .) . flip fmap)
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
   ReturnF result -> result
+  MapF transform action -> algebra action transform
   ThenF action continue -> algebra action continue
 {-# INLINE iterFreer #-}
 
@@ -89,6 +95,7 @@ stepFreer :: (forall x. f x -> Freer f x)
 stepFreer refine = go
   where go r = case r of
           Return a -> Left a
+          Map f step -> Right (f <$> refine step)
           step `Then` yield -> Right (refine step >>= yield)
 
 -- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
@@ -106,6 +113,7 @@ freerSteps refine = go
 retract :: Monad m => Freer m a -> m a
 retract r = case r of
   Return a -> return a
+  Map f a -> fmap f a
   Then a f -> a >>= retract . f
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
@@ -117,13 +125,19 @@ foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
 foldFreer f = retract . hoistFreer f
 
 
+-- | Rewrite 'Applicative' parameters  as 'Then'. Typically used for normalization or linearization.
+liftAp :: (a -> b -> c) -> f a -> Freer f b -> Freer f c
+liftAp f a b = Then a (flip fmap b . f)
+{-# INLINE liftAp #-}
+
+
 -- Instances
 
 instance Functor (Freer f) where
   fmap f = go
-    where go r = case r of
-            Return a -> Return (f a)
-            Then r t -> Then r (go . t)
+    where go (Return a) = Return (f a)
+          go (Map g a) = Map (f . g) a
+          go (Then r t) = Then r (go . t)
   {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
@@ -131,14 +145,17 @@ instance Applicative (Freer f) where
   {-# INLINE pure #-}
 
   Return f <*> param = fmap f param
+  Map f a <*> b = liftAp f a b
   Then action yield <*> param = Then action ((<*> param) . yield)
   {-# INLINE (<*>) #-}
 
   Return _ *> a = a
+  Map _ a *> b = liftAp (flip const) a b
   Then r f *> a = Then r ((*> a) . f)
   {-# INLINE (*>) #-}
 
   Return a <* b = b *> Return a
+  Map f a <* b = liftAp (const . f) a b
   Then r f <* a = Then r ((<* a) . f)
   {-# INLINE (<*) #-}
 
@@ -147,6 +164,7 @@ instance Monad (Freer f) where
   {-# INLINE return #-}
 
   Return a >>= f = f a
+  Map f r >>= g = Then r (g . f)
   Then r f >>= g = Then r (g <=< f)
   {-# INLINE (>>=) #-}
 
@@ -161,12 +179,14 @@ instance MonadFree f (Freer f) where
 instance Foldable f => Foldable (Freer f) where
   foldMap f = go
     where go (Return a) = f a
+          go (Map g a) = foldMap (f . g) a
           go (Then r t) = foldMap (go . t) r
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (Freer f) where
   traverse f = go
     where go (Return a) = pure <$> f a
+          go (Map g a) = liftF <$> traverse (f . g) a
           go (Then r t) = wrap <$> traverse (go . t) r
   {-# INLINE traverse #-}
 
@@ -175,6 +195,7 @@ instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
     where go d r = case r of
             Return a -> showsUnaryWith sp "Return" d a
+            Map f a -> showsBinaryWith (const showString) (liftShowsPrec ((. f) . sp) (sl . fmap f)) "Map" d "_" a
             Then r t -> showsBinaryWith (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
 
 instance (Show1 f, Show a) => Show (Freer f a) where
@@ -184,6 +205,7 @@ instance Eq1 f => Eq1 (Freer f) where
   liftEq eqA = go
     where go r s = case (r, s) of
             (Return a1, Return a2) -> eqA a1 a2
+            (Map f1 a1, Map f2 a2) -> liftEq (\ a b -> f1 a `eqA` f2 b) a1 a2
             (Then r1 t1, Then r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
             _ -> False
 
@@ -193,32 +215,36 @@ instance (Eq1 f, Eq a) => Eq (Freer f a) where
 
 instance Functor (FreerF f a) where
   fmap _ (ReturnF a) = ReturnF a
+  fmap _ (MapF f a) = MapF f a
   fmap f (ThenF r g) = ThenF r (f . g)
   {-# INLINE fmap #-}
 
 instance Bifunctor (FreerF f) where
-  bimap f g r = case r of
-    ReturnF a -> ReturnF (f a)
-    ThenF r t -> ThenF r (g . t)
+  bimap f _ (ReturnF a) = ReturnF (f a)
+  bimap f _ (MapF g a) = MapF (f . g) a
+  bimap _ g (ThenF r t) = ThenF r (g . t)
   {-# INLINE bimap #-}
 
 
 instance Foldable f => Foldable (FreerF f a) where
   foldMap f g = case g of
     ReturnF _ -> mempty
+    MapF _ _ -> mempty
     ThenF r t -> foldMap (f . t) r
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
-  traverse f g = case g of
-    ReturnF a -> pure (ReturnF a)
-    ThenF r t -> liftFreerF <$> traverse (f . t) r
+  traverse f = go
+    where go (ReturnF a) = pure (ReturnF a)
+          go (MapF g a) = MapF g <$> traverse pure a
+          go (ThenF r t) = liftFreerF <$> traverse (f . t) r
   {-# INLINE traverse #-}
 
 
 instance Eq1 f => Eq2 (FreerF f) where
   liftEq2 eqA eqB f1 f2 = case (f1, f2) of
     (ReturnF a1, ReturnF a2) -> eqA a1 a2
+    (MapF f1 a1, MapF f2 a2) -> liftEq (\ a b -> f1 a `eqA` f2 b) a1 a2
     (ThenF r1 t1, ThenF r2 t2) -> liftEq (\ x1 x2 -> eqB (t1 x1) (t2 x2)) r1 r2
     _ -> False
 
@@ -232,7 +258,12 @@ instance (Eq1 f, Eq a, Eq b) => Eq (FreerF f a b) where
 instance Show1 f => Show2 (FreerF f) where
   liftShowsPrec2 sp1 _ sp2 sa2 d f = case f of
     ReturnF a -> showsUnaryWith sp1 "ReturnF" d a
-    ThenF r t -> showsBinaryWith (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "ThenF" d r "_"
+    MapF _ a -> showsBinaryWith (const showString) (liftShowsPrec (showsPrec_ "_a") (showList_ "_a")) "MapF" d "_" a
+    ThenF r t -> showsBinaryWith (liftShowsPrec ((. t) . sp2) (sa2 . fmap t)) (const showString) "ThenF" d r "_"
+    where showsPrec_ :: String -> Int -> a -> ShowS
+          showsPrec_ s _ _ = showString s
+          showList_ :: String -> [a] -> ShowS
+          showList_ s = showListWith (showsPrec_ s 0)
 
 instance (Show1 f, Show a) => Show1 (FreerF f a) where
   liftShowsPrec = liftShowsPrec2 showsPrec showList
@@ -245,10 +276,12 @@ type instance Base (Freer f a) = FreerF f a
 
 instance Recursive (Freer f a) where
   project (Return a) = ReturnF a
+  project (Map f a) = MapF f a
   project (Then r t) = ThenF r t
   {-# INLINE project #-}
 
 instance Corecursive (Freer f a) where
   embed (ReturnF a) = Return a
+  embed (MapF f a) = Map f a
   embed (ThenF r t) = Then r t
   {-# INLINE embed #-}
