@@ -78,7 +78,7 @@ instance Corecursive (Cofreer f a) where
 
 instance Show1 f => Show1 (Cofreer f) where
   liftShowsPrec sp sl = go
-    where go d (Cofree a r t) = showsTernaryWith sp (liftShowsPrec (\ i -> go i . t) (liftShowList sp sl . fmap t)) (const showString) "Cofree" d a r "_"
+    where go d (Cofree a r t) = showsTernaryWith sp (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Cofree" d a r "_"
           showsTernaryWith :: (Int -> a -> ShowS) -> (Int -> b -> ShowS) -> (Int -> c -> ShowS) -> String -> Int -> a -> b -> c -> ShowS
           showsTernaryWith sp1 sp2 sp3 name d x y z = showParen (d > 10) $ showString name . showChar ' ' . sp1 11 x . showChar ' ' . sp2 11 y . showChar ' ' . sp3 11 z
 

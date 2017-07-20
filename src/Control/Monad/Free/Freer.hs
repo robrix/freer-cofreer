@@ -112,7 +112,7 @@ instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
     where go d r = case r of
             Return a -> showsUnaryWith sp "Return" d a
-            Then r t -> showsBinaryWith (liftShowsPrec (\ i -> go i . t) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
+            Then r t -> showsBinaryWith (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
 
 instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
