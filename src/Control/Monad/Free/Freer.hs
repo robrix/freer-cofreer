@@ -27,7 +27,7 @@ import Data.Functor.Foldable
 
 data Freer f a where
   Return :: a -> Freer f a
-  Then :: f x -> (x -> Freer f a) -> Freer f a
+  Then :: f b -> (b -> Freer f a) -> Freer f a
 
 infixl 1 `Then`
 
