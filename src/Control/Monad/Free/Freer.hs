@@ -13,6 +13,7 @@ module Control.Monad.Free.Freer
 , runFreer
 , stepFreer
 , freerSteps
+, retract
 , wrap
 ) where
 
@@ -98,6 +99,12 @@ freerSteps refine = go
   where go r = case stepFreer refine r of
           Left a -> [Return a]
           Right step -> step : go step
+
+
+retract :: Monad m => Freer m a -> m a
+retract r = case r of
+  Return a -> return a
+  Then a f -> a >>= retract . f
 
 
 -- Instances
