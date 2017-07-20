@@ -150,6 +150,9 @@ instance Monad (Freer f) where
   Then r f >>= g = Then r (g <=< f)
   {-# INLINE (>>=) #-}
 
+  (>>) = (*>)
+  {-# INLINE (>>) #-}
+
 instance MonadFree f (Freer f) where
   wrap = flip Then id
   {-# INLINE wrap #-}
