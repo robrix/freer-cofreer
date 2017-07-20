@@ -24,6 +24,7 @@ library
                      , free
                      , recursion-schemes
   default-language:    Haskell2010
+  ghc-options:         -Wall -fno-warn-name-shadowing -O -j
 
 test-suite test
   type:                exitcode-stdio-1.0
