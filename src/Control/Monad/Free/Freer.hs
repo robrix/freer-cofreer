@@ -154,7 +154,7 @@ instance Monad (Freer f) where
   {-# INLINE (>>) #-}
 
 instance MonadFree f (Freer f) where
-  wrap = flip Then id
+  wrap action = action `Then` id
   {-# INLINE wrap #-}
 
 
