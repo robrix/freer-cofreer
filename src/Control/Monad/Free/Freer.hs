@@ -134,6 +134,10 @@ instance Applicative (Freer f) where
   Then action yield <*> param = Then action ((<*> param) . yield)
   {-# INLINE (<*>) #-}
 
+  Return _ *> a = a
+  Then r f *> a = Then r ((*> a) . f)
+  {-# INLINE (*>) #-}
+
 instance Monad (Freer f) where
   return = pure
   {-# INLINE return #-}
