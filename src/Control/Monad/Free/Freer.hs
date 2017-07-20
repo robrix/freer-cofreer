@@ -133,9 +133,11 @@ instance Applicative (Freer f) where
     Return f -> fmap f a
     Then r t -> Then r ((<*> a) . t)
 
+
 instance Monad (Freer f) where
   return = pure
   {-# INLINE return #-}
+
   g >>= f = case g of
     Return a -> f a
     Then r t -> Then r (t >=> f)
