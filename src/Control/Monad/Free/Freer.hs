@@ -42,9 +42,9 @@ hoistFreer f = go
           Then r t -> Then (f r) (go . t)
 
 
-data FreerF f a b where
-  ReturnF :: a -> FreerF f a b
-  ThenF :: f x -> (x -> b) -> FreerF f a b
+data FreerF f a r where
+  ReturnF :: a -> FreerF f a r
+  ThenF :: f b -> (b -> r) -> FreerF f a r
 
 liftFreerF :: f b -> FreerF f a b
 liftFreerF action = action `ThenF` id
