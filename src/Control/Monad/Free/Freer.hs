@@ -48,10 +48,10 @@ liftF action = Map id action
 hoistFreer :: forall f g a . (forall x. f x -> g x) -> Freer f a -> Freer g a
 hoistFreer f = go
   where go :: forall a . Freer f a -> Freer g a
-        go (Return a) = Return a
-        go (Map g a) = Map g (f a)
+        go (Return a)  = Return a
+        go (Map g a)   = Map g (f a)
         go (Seq g a b) = Seq g (f a) (go b)
-        go (Then r t) = Then (f r) (go . t)
+        go (Then r t)  = Then (f r) (go . t)
 
 
 data FreerF f a r where
