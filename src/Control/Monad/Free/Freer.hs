@@ -77,7 +77,7 @@ iterA algebra = iterFreerA ((algebra .) . flip fmap)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
-  ReturnF result -> result
+  ReturnF result        -> result
   MapF transform action -> algebra action transform
   ThenF action continue -> algebra action continue
 {-# INLINE iterFreer #-}
