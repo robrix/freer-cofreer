@@ -40,6 +40,7 @@ liftF :: f a -> Freer f a
 liftF action = Map id action
 {-# INLINE liftF #-}
 
+-- | Lift a natural transformation on functors into natural transformation on 'Freer'.
 hoistFreer :: forall f g a . (forall x. f x -> g x) -> Freer f a -> Freer g a
 hoistFreer f = go
   where go :: forall a . Freer f a -> Freer g a
