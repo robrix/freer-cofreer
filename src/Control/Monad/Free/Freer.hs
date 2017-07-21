@@ -14,8 +14,8 @@ module Control.Monad.Free.Freer
 , stepFreer
 , freerSteps
 , retract
-, cutoff
 , foldFreer
+, cutoff
 , wrap
 ) where
 
@@ -107,14 +107,15 @@ retract :: Monad m => Freer m a -> m a
 retract = iterFreerA (>>=)
 {-# INLINE retract #-}
 
+foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
+foldFreer f = retract . hoistFreer f
+{-# INLINE foldFreer #-}
+
+
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
 cutoff n (Then a f) = Then a (cutoff (pred n) . f)
 cutoff _ r = Right <$> r
-
-foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
-foldFreer f = retract . hoistFreer f
-{-# INLINE foldFreer #-}
 
 
 -- Instances
