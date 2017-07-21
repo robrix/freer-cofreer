@@ -2,6 +2,7 @@
 module Control.Monad.Free.Freer
 ( Freer(..)
 , liftF
+, wrap
 , hoistFreer
 , FreerF(..)
 , liftFreerF
@@ -17,7 +18,6 @@ module Control.Monad.Free.Freer
 , retract
 , cutoff
 , foldFreer
-, wrap
 ) where
 
 import Control.Monad ((<=<))
