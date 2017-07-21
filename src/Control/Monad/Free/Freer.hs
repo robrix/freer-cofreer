@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances, GADTs, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, TypeFamilies #-}
 module Control.Monad.Free.Freer
 ( Freer(..)
+, wrap
 , liftF
 , hoistFreer
 , FreerF(..)
@@ -14,9 +15,8 @@ module Control.Monad.Free.Freer
 , stepFreer
 , freerSteps
 , retract
-, cutoff
 , foldFreer
-, wrap
+, cutoff
 ) where
 
 import Control.Monad ((<=<))
@@ -104,17 +104,18 @@ freerSteps refine = go
 
 
 retract :: Monad m => Freer m a -> m a
-retract r = case r of
-  Return a -> return a
-  Then a f -> a >>= retract . f
+retract = iterFreerA (>>=)
+{-# INLINE retract #-}
+
+foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
+foldFreer f = retract . hoistFreer f
+{-# INLINE foldFreer #-}
+
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
 cutoff n (Then a f) = Then a (cutoff (pred n) . f)
 cutoff _ r = Right <$> r
-
-foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
-foldFreer f = retract . hoistFreer f
 
 
 -- Instances
