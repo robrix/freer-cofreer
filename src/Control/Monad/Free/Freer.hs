@@ -110,11 +110,10 @@ stepFreer :: (forall x. f x -> Freer f x)
           -> Freer f result
           -> Either result (Freer f result)
 stepFreer refine = go
-  where go r = case r of
-          Return a -> Left a
-          Map f step -> Right (f <$> refine step)
-          Seq f a b -> go (liftAp f a b)
-          step `Then` yield -> Right (refine step >>= yield)
+  where go (Return a)          = Left a
+        go (Map f step)        = Right (f <$> refine step)
+        go (Seq f step1 step2) = go (liftAp f step1 step2)
+        go (step `Then` yield) = Right (refine step >>= yield)
 
 -- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
 --
