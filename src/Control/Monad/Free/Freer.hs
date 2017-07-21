@@ -89,10 +89,10 @@ iterFreerA algebra r = iterFreer algebra (fmap pure r)
 iterLookahead :: forall f a. (forall x y. f x -> Maybe (Freer f y) -> (x -> a) -> a) -> Freer f a -> a
 iterLookahead algebra = go
   where go :: Freer f a -> a
-        go (Return a) = a
-        go (Map f a) = algebra a Nothing f
+        go (Return a)  = a
+        go (Map f a)   = algebra a Nothing f
         go (Seq f a b) = algebra a (Just b) (go . flip fmap b . f)
-        go (Then a f) = algebra a Nothing (go . f)
+        go (Then a f)  = algebra a Nothing (go . f)
 {-# INLINE iterLookahead #-}
 
 
