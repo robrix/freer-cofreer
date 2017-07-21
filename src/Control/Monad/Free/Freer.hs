@@ -10,6 +10,7 @@ module Control.Monad.Free.Freer
 , iterA
 , iterFreer
 , iterFreerA
+, iterLookahead
 , runFreer
 , stepFreer
 , freerSteps
@@ -79,6 +80,15 @@ iterFreer algebra = cata $ \ r -> case r of
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
 iterFreerA algebra r = iterFreer algebra (fmap pure r)
 {-# INLINE iterFreerA #-}
+
+iterLookahead :: forall f a. (forall x y. f x -> Maybe (Freer f y) -> (x -> a) -> a) -> Freer f a -> a
+iterLookahead algebra = go
+  where go :: Freer f a -> a
+        go (Return a) = a
+        go (Map f a) = algebra a Nothing f
+        go (Seq f a b) = algebra a (Just b) (go . flip fmap b . f)
+        go (Then a f) = algebra a Nothing (go . f)
+{-# INLINE iterLookahead #-}
 
 
 -- | Run a program to completion by repeated refinement, and return its result.
