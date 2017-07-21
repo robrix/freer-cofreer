@@ -114,6 +114,7 @@ stepFreer refine = go
         go (Map f step)        = Right (f <$> refine step)
         go (Seq f step1 step2) = go (liftAp f step1 step2)
         go (step `Then` yield) = Right (refine step >>= yield)
+{-# INLINE stepFreer #-}
 
 -- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
 --
