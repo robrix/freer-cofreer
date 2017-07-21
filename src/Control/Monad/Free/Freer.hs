@@ -12,6 +12,7 @@ module Control.Monad.Free.Freer
 , iterFreer
 , iterFreerA
 , runFreer
+, runFreerM
 , stepFreer
 , freerSteps
 , retract
@@ -81,6 +82,18 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+{-# INLINE runFreer #-}
+
+-- | Run a program to completion by repeated refinement in some 'Monad'ic context, and return its result.
+runFreerM :: forall f m result
+          .  Monad m
+          => (forall x. f x -> Freer f (m x))
+          -> Freer f result
+          -> m result
+runFreerM refine r = go (fmap pure r)
+  where go :: Freer f (m x) -> m x
+        go = iterFreer ((>>=) . go . refine)
+{-# INLINE runFreerM #-}
 
 -- | Run a single step of a program by refinement, returning 'Either' its @result@ or the next step.
 stepFreer :: (forall x. f x -> Freer f x)
