@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances, GADTs, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, TypeFamilies #-}
 module Control.Monad.Free.Freer
 ( Freer(..)
+, wrap
 , liftF
 , hoistFreer
 , FreerF(..)
@@ -16,7 +17,6 @@ module Control.Monad.Free.Freer
 , retract
 , foldFreer
 , cutoff
-, wrap
 ) where
 
 import Control.Monad ((<=<))
