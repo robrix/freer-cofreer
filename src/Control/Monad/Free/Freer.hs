@@ -7,16 +7,20 @@ module Control.Monad.Free.Freer
 , FreerF(..)
 , liftFreerF
 , hoistFreerF
+-- Iteration
 , iter
 , iterA
 , iterFreer
 , iterFreerA
 , iterLookahead
+-- Iteration by refinement
 , runFreer
 , stepFreer
 , freerSteps
+-- Monadic reduction
 , retract
 , foldFreer
+-- Bounding
 , cutoff
 ) where
 
