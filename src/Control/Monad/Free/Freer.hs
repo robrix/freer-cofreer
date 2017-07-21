@@ -81,6 +81,7 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+{-# INLINE runFreer #-}
 
 -- | Run a single step of a program by refinement, returning 'Either' its @result@ or the next step.
 stepFreer :: (forall x. f x -> Freer f x)
