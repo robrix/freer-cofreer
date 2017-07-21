@@ -31,10 +31,15 @@ import Data.Functor.Classes
 import Data.Functor.Foldable
 import Text.Show (showListWith)
 
+-- | 'Freer' lifts any @f :: * -> *@ into a value with unconstrained 'Functor', 'Applicative', and 'Monad' instances.
 data Freer f a where
+  -- | A pure computation.
   Return :: a -> Freer f a
+  -- | Mapping over a value in @f@. This can be understood as storing the parameters to 'fmap'.
   Map :: (b -> a) -> f b -> Freer f a
+  -- | Sequencing of values in @f@. This can be understood as storing the parameters to 'liftA2'.
   Seq :: (c -> b -> a) -> f c -> Freer f b -> Freer f a
+  -- | 'Monad'ic binding of values in @f@. This can be understood as storing the parameters to '>>='.
   Then :: f b -> (b -> Freer f a) -> Freer f a
 
 infixl 1 `Then`
