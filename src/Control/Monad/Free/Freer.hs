@@ -35,6 +35,7 @@ data Freer f a where
 
 infixl 1 `Then`
 
+-- | Lift a value in any functor into a 'Freer' monad.
 liftF :: f a -> Freer f a
 liftF action = Map id action
 {-# INLINE liftF #-}
