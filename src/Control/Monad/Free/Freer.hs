@@ -16,8 +16,8 @@ module Control.Monad.Free.Freer
 , stepFreer
 , freerSteps
 , retract
-, cutoff
 , foldFreer
+, cutoff
 ) where
 
 import Control.Monad ((<=<))
@@ -132,14 +132,15 @@ retract r = case r of
   Seq f a b -> f <$> a <*> retract b
   Then a f -> a >>= retract . f
 
+foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
+foldFreer f = retract . hoistFreer f
+
+
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
 cutoff n (Seq f a b) = Seq (\ a -> bimap (fmap (f a)) (f a)) a (cutoff (pred n) b)
 cutoff n (Then a f) = Then a (cutoff (pred n) . f)
 cutoff _ r = Right <$> r
-
-foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
-foldFreer f = retract . hoistFreer f
 
 
 -- | Rewrite 'Applicative' parameters  as 'Then'. Typically used for normalization or linearization.
