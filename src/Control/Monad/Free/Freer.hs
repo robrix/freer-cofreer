@@ -104,9 +104,7 @@ freerSteps refine = go
 
 
 retract :: Monad m => Freer m a -> m a
-retract r = case r of
-  Return a -> return a
-  Then a f -> a >>= retract . f
+retract = iterFreerA (>>=)
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
