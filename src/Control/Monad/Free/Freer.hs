@@ -218,9 +218,8 @@ instance Bifunctor (FreerF f) where
 
 
 instance Foldable f => Foldable (FreerF f a) where
-  foldMap f g = case g of
-    ReturnF _ -> mempty
-    ThenF r t -> foldMap (f . t) r
+  foldMap _ (ReturnF _) = mempty
+  foldMap f (ThenF step yield) = foldMap (f . yield) step
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
