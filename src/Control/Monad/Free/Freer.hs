@@ -51,9 +51,8 @@ liftFreerF action = action `ThenF` id
 {-# INLINE liftFreerF #-}
 
 hoistFreerF :: (forall a. f a -> g a) -> FreerF f b c -> FreerF g b c
-hoistFreerF f r = case r of
-  ReturnF a -> ReturnF a
-  ThenF r t -> ThenF (f r) t
+hoistFreerF _ (ReturnF result) = ReturnF result
+hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
