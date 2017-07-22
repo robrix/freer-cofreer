@@ -165,14 +165,8 @@ retract (action `Then` yield) = action >>= retract . yield
 -- | Fold a 'Freer' action by mapping its steps onto some 'Monad' @m@.
 --
 -- > foldFreer f = retract . hoistFreer f
-foldFreer :: forall f m a . Monad m => (forall x. f x -> m x) -> Freer f a -> m a
-foldFreer f = go
-  where go :: forall a . Freer f a -> m a
-        go (Return result)     = pure result
-        go (Map g step)        = g <$> f step
-        go (Seq g step1 step2) = g <$> f step1 <*> go step2
-        go (Then step yield)   = f step >>= go . yield
-        {-# INLINE go #-}
+foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
+foldFreer f r = retract (hoistFreer f r)
 {-# INLINE foldFreer #-}
 
 
