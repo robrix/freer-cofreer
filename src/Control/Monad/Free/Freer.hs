@@ -139,6 +139,7 @@ instance Functor (Freer f) where
   fmap f = go
     where go (Return result) = Return (f result)
           go (Then step yield) = Then step (go . yield)
+          {-# INLINE go #-}
   {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
