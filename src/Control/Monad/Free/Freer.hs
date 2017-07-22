@@ -243,9 +243,8 @@ instance (Eq1 f, Eq a, Eq b) => Eq (FreerF f a b) where
 
 
 instance Show1 f => Show2 (FreerF f) where
-  liftShowsPrec2 sp1 _ sp2 sa2 d f = case f of
-    ReturnF a -> showsUnaryWith sp1 "ReturnF" d a
-    ThenF r t -> showsBinaryWith (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "ThenF" d r "_"
+  liftShowsPrec2 sp1 _ _ _ d (ReturnF result) = showsUnaryWith sp1 "ReturnF" d result
+  liftShowsPrec2 sp1 _ sp2 sa2 d (ThenF step yield) = showsBinaryWith (liftShowsPrec ((. yield) . sp2) (sa2 . fmap yield)) (const showString) "ThenF" d step "_"
 
 instance (Show1 f, Show a) => Show1 (FreerF f a) where
   liftShowsPrec = liftShowsPrec2 showsPrec showList
