@@ -228,10 +228,9 @@ instance Traversable f => Traversable (FreerF f a) where
 
 
 instance Eq1 f => Eq2 (FreerF f) where
-  liftEq2 eqA eqB f1 f2 = case (f1, f2) of
-    (ReturnF a1, ReturnF a2) -> eqA a1 a2
-    (ThenF r1 t1, ThenF r2 t2) -> liftEq (\ x1 x2 -> eqB (t1 x1) (t2 x2)) r1 r2
-    _ -> False
+  liftEq2 eqResult eqRecur (ReturnF result1) (ReturnF result2) = eqResult result1 result2
+  liftEq2 _ eqRecur (ThenF step1 yield1) (ThenF step2 yield2) = liftEq (\ x1 x2 -> eqRecur (yield1 x1) (yield2 x2)) step1 step2
+  liftEq2 _ _ _ _ = False
 
 instance (Eq1 f, Eq a) => Eq1 (FreerF f a) where
   liftEq = liftEq2 (==)
