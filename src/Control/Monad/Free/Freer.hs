@@ -83,6 +83,7 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+        {-# INLINE go #-}
 {-# INLINE runFreer #-}
 
 -- | Run a program to completion by repeated refinement in some 'Monad'ic context, and return its result.
