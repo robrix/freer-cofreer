@@ -64,9 +64,10 @@ iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = iterFreerA ((algebra .) . flip fmap)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
-iterFreer algebra = cata $ \ r -> case r of
-  ReturnF result -> result
-  ThenF action continue -> algebra action continue
+iterFreer algebra = go
+  where go (Return result) = result
+        go (Then action continue) = algebra action (go . continue)
+        {-# INLINE go #-}
 {-# INLINE iterFreer #-}
 
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
