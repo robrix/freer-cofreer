@@ -153,7 +153,10 @@ freerSteps refine = go
 
 
 retract :: Monad m => Freer m a -> m a
-retract = iterFreerA (>>=)
+retract (Return a) = return a
+retract (Map f action) = f <$> action
+retract (Seq f action1 action2) = f <$> action1 <*> retract action2
+retract (action `Then` yield) = action >>= retract . yield
 {-# INLINE retract #-}
 
 foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
