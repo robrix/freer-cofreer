@@ -40,6 +40,8 @@ hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
   where go (Return result) = Return result
         go (Then step yield) = Then (f step) (go . yield)
+        {-# INLINE go #-}
+{-# INLINE hoistFreer #-}
 
 
 data FreerF f a b where
