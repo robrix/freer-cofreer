@@ -7,12 +7,12 @@ import Prelude hiding (read)
 main :: IO ()
 main = defaultMain
   [ bgroup "retract"
-    [ bgroup "iteration-catamorphism" (b retract <$> [30])
-    , bgroup "iteration-recursion" (b retract' <$> [30])
-    , bgroup "direct-recursion" (b retract'' <$> [30])
+    [ bgroup "iteration-catamorphism" (b retract fibM <$> [30])
+    , bgroup "iteration-recursion" (b retract' fibM <$> [30])
+    , bgroup "direct-recursion" (b retract'' fibM <$> [30])
     ]
   ]
-  where b f i = bench (show i) (whnf (f . fibM) i)
+  where b f prog i = bench (show i) (whnf (f . prog) i)
 
 -- iteration-catamorphism
 
