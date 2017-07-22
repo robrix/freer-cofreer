@@ -103,6 +103,7 @@ iterLookahead algebra = go
         go (Map f a)   = algebra a Nothing f
         go (Seq f a b) = algebra a (Just b) (go . flip fmap b . f)
         go (Then a f)  = algebra a Nothing (go . f)
+        {-# INLINE go #-}
 {-# INLINE iterLookahead #-}
 
 
