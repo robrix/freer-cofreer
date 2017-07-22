@@ -223,9 +223,8 @@ instance Foldable f => Foldable (FreerF f a) where
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
-  traverse f g = case g of
-    ReturnF a -> pure (ReturnF a)
-    ThenF r t -> liftFreerF <$> traverse (f . t) r
+  traverse _ (ReturnF result) = pure (ReturnF result)
+  traverse f (ThenF step yield) = liftFreerF <$> traverse (f . yield) step
   {-# INLINE traverse #-}
 
 
