@@ -62,6 +62,8 @@ retract'' (action `Then` yield) = action >>= retract'' . yield
 {-# INLINE retract'' #-}
 
 
+-- fibonacci
+
 fibM :: Int -> Freer (Either String) Int
 fibM n
   | n < 0 = (Left "negative") `Then` return
