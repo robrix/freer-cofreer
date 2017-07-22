@@ -189,9 +189,8 @@ instance Traversable f => Traversable (Freer f) where
 
 instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
-    where go d r = case r of
-            Return a -> showsUnaryWith sp "Return" d a
-            Then r t -> showsBinaryWith (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
+    where go d (Return a) = showsUnaryWith sp "Return" d a
+          go d (Then step yield) = showsBinaryWith (liftShowsPrec ((. yield) . go) (liftShowList sp sl . fmap yield)) (const showString) "Then" d step "_"
 
 instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
