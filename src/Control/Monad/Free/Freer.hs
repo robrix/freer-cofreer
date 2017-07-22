@@ -152,6 +152,7 @@ freerSteps refine = go
           Right step -> step : go step
 
 
+-- | Sequence a 'Freer' action over an underlying 'Monad' @m@.
 retract :: Monad m => Freer m a -> m a
 retract (Return a) = return a
 retract (Map f action) = f <$> action
@@ -159,6 +160,9 @@ retract (Seq f action1 action2) = f <$> action1 <*> retract action2
 retract (action `Then` yield) = action >>= retract . yield
 {-# INLINE retract #-}
 
+-- | Fold a 'Freer' action by mapping its steps onto some 'Monad' @m@.
+--
+-- > foldFreer f = retract . hoistFreer f
 foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
 foldFreer f r = retract (hoistFreer f r)
 {-# INLINE foldFreer #-}
