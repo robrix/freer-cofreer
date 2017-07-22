@@ -6,6 +6,7 @@ module Control.Comonad.Cofree.Cofreer
 , CofreerF(..)
 , headF
 , tailF
+, hoistCofreerF
 , coiter
 , unfold
 , extract

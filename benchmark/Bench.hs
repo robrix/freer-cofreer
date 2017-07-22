@@ -7,12 +7,15 @@ import Prelude hiding (read)
 main :: IO ()
 main = defaultMain
   [ bgroup "retract"
-    [ bgroup "iteration-catamorphism" (b retract <$> [30])
-    , bgroup "iteration-recursion" (b retract' <$> [30])
-    , bgroup "direct-recursion" (b retract'' <$> [30])
+    [ bgroup "iteration-catamorphism-monadic" (b retract fibM <$> [30])
+    , bgroup "iteration-catamorphism-applicative" (b retract fibA <$> [30])
+    , bgroup "iteration-recursion-monadic" (b retract' fibM <$> [30])
+    , bgroup "iteration-recursion-applicative" (b retract' fibA <$> [30])
+    , bgroup "direct-recursion-monadic" (b retract'' fibM <$> [30])
+    , bgroup "direct-recursion-applicative" (b retract'' fibA <$> [30])
     ]
   ]
-  where b f i = bench (show i) (whnf (f . fib) i)
+  where b f prog i = bench (show i) (whnf (f . prog) i)
 
 -- iteration-catamorphism
 
@@ -23,6 +26,7 @@ retract = iterFreerA (>>=)
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
   ReturnF result -> result
+  MapF f action -> algebra action f
   ThenF action continue -> algebra action continue
 {-# INLINE iterFreer #-}
 
@@ -40,6 +44,8 @@ retract' = iterFreerA' (>>=)
 iterFreer' :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer' algebra = go
   where go (Return result) = result
+        go (Map f action) = algebra action f
+        go (Seq f action1 action2) = algebra action1 (go . flip fmap action2 . f)
         go (Then action continue) = algebra action (go . continue)
         {-# INLINE go #-}
 {-# INLINE iterFreer' #-}
@@ -53,12 +59,16 @@ iterFreerA' algebra r = iterFreer' algebra (fmap pure r)
 
 retract'' :: Monad m => Freer m a -> m a
 retract'' (Return a) = return a
-retract'' (action `Then` yield) = action >>= retract' . yield
+retract'' (Map f action) = f <$> action
+retract'' (Seq f action1 action2) = f <$> action1 <*> retract'' action2
+retract'' (action `Then` yield) = action >>= retract'' . yield
 {-# INLINE retract'' #-}
 
 
-fib :: Int -> Freer (Either String) Int
-fib n
+-- fibonacci
+
+fibM :: Int -> Freer (Either String) Int
+fibM n
   | n < 0 = (Left "negative") `Then` return
   | otherwise = go n
   where go 0 = return 0
@@ -67,3 +77,12 @@ fib n
           x <- go (pred n)
           y <- go (pred (pred n))
           Right (x + y) `Then` return
+
+fibA :: Int -> Freer (Either String) Int
+fibA n
+  | n < 0 = (Left "negative") `Then` return
+  | otherwise = go n
+  where go :: Int -> Freer (Either String) Int
+        go 0 = return 0
+        go 1 = Right 1 `Then` return
+        go n = (+) <$> go (pred n) <*> go (pred (pred n))
