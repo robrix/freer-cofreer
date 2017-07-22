@@ -160,7 +160,7 @@ retract (action `Then` yield) = action >>= retract . yield
 {-# INLINE retract #-}
 
 foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
-foldFreer f = retract . hoistFreer f
+foldFreer f r = retract (hoistFreer f r)
 {-# INLINE foldFreer #-}
 
 
