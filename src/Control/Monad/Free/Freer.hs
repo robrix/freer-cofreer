@@ -196,11 +196,10 @@ instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
 
 instance Eq1 f => Eq1 (Freer f) where
-  liftEq eqA = go
-    where go r s = case (r, s) of
-            (Return a1, Return a2) -> eqA a1 a2
-            (Then r1 t1, Then r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
-            _ -> False
+  liftEq eqResult = go
+    where go (Return result1) (Return result2) = eqResult result1 result2
+          go (Then step1 yield1) (Then step2 yield2) = liftEq (\ x1 x2 -> go (yield1 x1) (yield2 x2)) step1 step2
+          go _ _ = False
 
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
   (==) = liftEq (==)
