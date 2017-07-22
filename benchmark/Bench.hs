@@ -56,7 +56,9 @@ iterFreerA' algebra r = iterFreer' algebra (fmap pure r)
 
 retract'' :: Monad m => Freer m a -> m a
 retract'' (Return a) = return a
-retract'' (action `Then` yield) = action >>= retract' . yield
+retract'' (Map f action) = f <$> action
+retract'' (Seq f action1 action2) = f <$> action1 <*> retract'' action2
+retract'' (action `Then` yield) = action >>= retract'' . yield
 {-# INLINE retract'' #-}
 
 
