@@ -137,9 +137,8 @@ cutoff _ r = Right <$> r
 
 instance Functor (Freer f) where
   fmap f = go
-    where go r = case r of
-            Return a -> Return (f a)
-            Then r t -> Then r (go . t)
+    where go (Return result) = Return (f result)
+          go (Then step yield) = Then step (go . yield)
   {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
