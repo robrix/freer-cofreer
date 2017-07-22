@@ -1,1 +1,2 @@
+packages: freer-cofreer.cabal
 jobs: $ncpus
