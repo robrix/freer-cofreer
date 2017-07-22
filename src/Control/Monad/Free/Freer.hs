@@ -128,8 +128,9 @@ foldFreer f = retract . hoistFreer f
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
-cutoff n (Then a f) = Then a (cutoff (pred n) . f)
+cutoff n (Then step yield) = Then step (cutoff (pred n) . yield)
 cutoff _ r = Right <$> r
+{-# INLINE cutoff #-}
 
 
 -- Instances
