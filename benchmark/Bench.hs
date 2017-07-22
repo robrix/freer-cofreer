@@ -12,7 +12,7 @@ main = defaultMain
     , bgroup "direct-recursion" (b retract'' <$> [30])
     ]
   ]
-  where b f i = bench (show i) (whnf (f . fib) i)
+  where b f i = bench (show i) (whnf (f . fibM) i)
 
 -- iteration-catamorphism
 
@@ -60,8 +60,8 @@ retract'' (action `Then` yield) = action >>= retract' . yield
 {-# INLINE retract'' #-}
 
 
-fib :: Int -> Freer (Either String) Int
-fib n
+fibM :: Int -> Freer (Either String) Int
+fibM n
   | n < 0 = (Left "negative") `Then` return
   | otherwise = go n
   where go 0 = return 0
