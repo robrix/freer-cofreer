@@ -155,6 +155,8 @@ freerSteps refine = go
 
 
 -- | Sequence a 'Freer' action over an underlying 'Monad' @m@.
+--
+-- > retract = iterFreerA (>>=)
 retract :: Monad m => Freer m a -> m a
 retract (Return a) = return a
 retract (Map f action) = f <$> action
