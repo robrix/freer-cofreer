@@ -23,6 +23,7 @@ retract = iterFreerA (>>=)
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer algebra = cata $ \ r -> case r of
   ReturnF result -> result
+  MapF f action -> algebra action f
   ThenF action continue -> algebra action continue
 {-# INLINE iterFreer #-}
 
@@ -40,6 +41,8 @@ retract' = iterFreerA' (>>=)
 iterFreer' :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
 iterFreer' algebra = go
   where go (Return result) = result
+        go (Map f action) = algebra action f
+        go (Seq f action1 action2) = algebra action1 (go . flip fmap action2 . f)
         go (Then action continue) = algebra action (go . continue)
         {-# INLINE go #-}
 {-# INLINE iterFreer' #-}
