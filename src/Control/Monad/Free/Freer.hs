@@ -38,9 +38,8 @@ liftF action = action `Then` return
 
 hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
-  where go r = case r of
-          Return a -> Return a
-          Then r t -> Then (f r) (go . t)
+  where go (Return result) = Return result
+        go (Then step yield) = Then (f step) (go . yield)
 
 
 data FreerF f a b where
