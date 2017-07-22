@@ -38,9 +38,10 @@ liftF action = action `Then` return
 
 hoistFreer :: (forall a. f a -> g a) -> Freer f b -> Freer g b
 hoistFreer f = go
-  where go r = case r of
-          Return a -> Return a
-          Then r t -> Then (f r) (go . t)
+  where go (Return result) = Return result
+        go (Then step yield) = Then (f step) (go . yield)
+        {-# INLINE go #-}
+{-# INLINE hoistFreer #-}
 
 
 data FreerF f a b where
@@ -52,9 +53,8 @@ liftFreerF action = action `ThenF` id
 {-# INLINE liftFreerF #-}
 
 hoistFreerF :: (forall a. f a -> g a) -> FreerF f b c -> FreerF g b c
-hoistFreerF f r = case r of
-  ReturnF a -> ReturnF a
-  ThenF r t -> ThenF (f r) t
+hoistFreerF _ (ReturnF result) = ReturnF result
+hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
@@ -64,9 +64,10 @@ iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = iterFreerA ((algebra .) . flip fmap)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
-iterFreer algebra = cata $ \ r -> case r of
-  ReturnF result -> result
-  ThenF action continue -> algebra action continue
+iterFreer algebra = go
+  where go (Return result) = result
+        go (Then action continue) = algebra action (go . continue)
+        {-# INLINE go #-}
 {-# INLINE iterFreer #-}
 
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
@@ -82,6 +83,7 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+        {-# INLINE go #-}
 {-# INLINE runFreer #-}
 
 -- | Run a program to completion by repeated refinement in some 'Monad'ic context, and return its result.
@@ -100,9 +102,8 @@ stepFreer :: (forall x. f x -> Freer f x)
           -> Freer f result
           -> Either result (Freer f result)
 stepFreer refine = go
-  where go r = case r of
-          Return a -> Left a
-          step `Then` yield -> Right (refine step >>= yield)
+  where go (Return a) = Left a
+        go (step `Then` yield) = Right (refine step >>= yield)
 
 -- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
 --
@@ -127,17 +128,18 @@ foldFreer f = retract . hoistFreer f
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
-cutoff n (Then a f) = Then a (cutoff (pred n) . f)
+cutoff n (Then step yield) = Then step (cutoff (pred n) . yield)
 cutoff _ r = Right <$> r
+{-# INLINE cutoff #-}
 
 
 -- Instances
 
 instance Functor (Freer f) where
   fmap f = go
-    where go r = case r of
-            Return a -> Return (f a)
-            Then r t -> Then r (go . t)
+    where go (Return result) = Return (f result)
+          go (Then step yield) = Then step (go . yield)
+          {-# INLINE go #-}
   {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
@@ -187,19 +189,17 @@ instance Traversable f => Traversable (Freer f) where
 
 instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
-    where go d r = case r of
-            Return a -> showsUnaryWith sp "Return" d a
-            Then r t -> showsBinaryWith (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
+    where go d (Return a) = showsUnaryWith sp "Return" d a
+          go d (Then step yield) = showsBinaryWith (liftShowsPrec ((. yield) . go) (liftShowList sp sl . fmap yield)) (const showString) "Then" d step "_"
 
 instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
 
 instance Eq1 f => Eq1 (Freer f) where
-  liftEq eqA = go
-    where go r s = case (r, s) of
-            (Return a1, Return a2) -> eqA a1 a2
-            (Then r1 t1, Then r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
-            _ -> False
+  liftEq eqResult = go
+    where go (Return result1) (Return result2) = eqResult result1 result2
+          go (Then step1 yield1) (Then step2 yield2) = liftEq (\ x1 x2 -> go (yield1 x1) (yield2 x2)) step1 step2
+          go _ _ = False
 
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
   (==) = liftEq (==)
@@ -211,30 +211,26 @@ instance Functor (FreerF f a) where
   {-# INLINE fmap #-}
 
 instance Bifunctor (FreerF f) where
-  bimap f g r = case r of
-    ReturnF a -> ReturnF (f a)
-    ThenF r t -> ThenF r (g . t)
+  bimap f _ (ReturnF result) = ReturnF (f result)
+  bimap _ g (ThenF step yield) = ThenF step (g . yield)
   {-# INLINE bimap #-}
 
 
 instance Foldable f => Foldable (FreerF f a) where
-  foldMap f g = case g of
-    ReturnF _ -> mempty
-    ThenF r t -> foldMap (f . t) r
+  foldMap _ (ReturnF _) = mempty
+  foldMap f (ThenF step yield) = foldMap (f . yield) step
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
-  traverse f g = case g of
-    ReturnF a -> pure (ReturnF a)
-    ThenF r t -> liftFreerF <$> traverse (f . t) r
+  traverse _ (ReturnF result) = pure (ReturnF result)
+  traverse f (ThenF step yield) = liftFreerF <$> traverse (f . yield) step
   {-# INLINE traverse #-}
 
 
 instance Eq1 f => Eq2 (FreerF f) where
-  liftEq2 eqA eqB f1 f2 = case (f1, f2) of
-    (ReturnF a1, ReturnF a2) -> eqA a1 a2
-    (ThenF r1 t1, ThenF r2 t2) -> liftEq (\ x1 x2 -> eqB (t1 x1) (t2 x2)) r1 r2
-    _ -> False
+  liftEq2 eqResult eqRecur (ReturnF result1) (ReturnF result2) = eqResult result1 result2
+  liftEq2 _ eqRecur (ThenF step1 yield1) (ThenF step2 yield2) = liftEq (\ x1 x2 -> eqRecur (yield1 x1) (yield2 x2)) step1 step2
+  liftEq2 _ _ _ _ = False
 
 instance (Eq1 f, Eq a) => Eq1 (FreerF f a) where
   liftEq = liftEq2 (==)
@@ -244,9 +240,8 @@ instance (Eq1 f, Eq a, Eq b) => Eq (FreerF f a b) where
 
 
 instance Show1 f => Show2 (FreerF f) where
-  liftShowsPrec2 sp1 _ sp2 sa2 d f = case f of
-    ReturnF a -> showsUnaryWith sp1 "ReturnF" d a
-    ThenF r t -> showsBinaryWith (liftShowsPrec (\ i -> sp2 i . t) (sa2 . fmap t)) (const showString) "ThenF" d r "_"
+  liftShowsPrec2 sp1 _ _ _ d (ReturnF result) = showsUnaryWith sp1 "ReturnF" d result
+  liftShowsPrec2 sp1 _ sp2 sa2 d (ThenF step yield) = showsBinaryWith (liftShowsPrec ((. yield) . sp2) (sa2 . fmap yield)) (const showString) "ThenF" d step "_"
 
 instance (Show1 f, Show a) => Show1 (FreerF f a) where
   liftShowsPrec = liftShowsPrec2 showsPrec showList
