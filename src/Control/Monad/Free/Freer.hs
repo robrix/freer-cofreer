@@ -212,9 +212,8 @@ instance Functor (FreerF f a) where
   {-# INLINE fmap #-}
 
 instance Bifunctor (FreerF f) where
-  bimap f g r = case r of
-    ReturnF a -> ReturnF (f a)
-    ThenF r t -> ThenF r (g . t)
+  bimap f _ (ReturnF result) = ReturnF (f result)
+  bimap _ g (ThenF step yield) = ThenF step (g . yield)
   {-# INLINE bimap #-}
 
 
