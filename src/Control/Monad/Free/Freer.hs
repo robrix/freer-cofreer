@@ -3,7 +3,6 @@ module Control.Monad.Free.Freer
 ( Freer(..)
 , wrap
 , liftF
-, wrap
 , hoistFreer
 , FreerF(..)
 , liftFreerF
@@ -16,6 +15,7 @@ module Control.Monad.Free.Freer
 , iterLookahead
 -- Iteration by refinement
 , runFreer
+, runFreerM
 , stepFreer
 , freerSteps
 -- Monadic reduction
@@ -54,10 +54,12 @@ liftF action = Map id action
 hoistFreer :: forall f g a . (forall x. f x -> g x) -> Freer f a -> Freer g a
 hoistFreer f = go
   where go :: forall a . Freer f a -> Freer g a
-        go (Return a)  = Return a
-        go (Map g a)   = Map g (f a)
-        go (Seq g a b) = Seq g (f a) (go b)
-        go (Then r t)  = Then (f r) (go . t)
+        go (Return result)     = Return result
+        go (Map g step)        = Map g (f step)
+        go (Seq g step1 step2) = Seq g (f step1) (go step2)
+        go (Then step yield)   = Then (f step) (go . yield)
+        {-# INLINE go #-}
+{-# INLINE hoistFreer #-}
 
 
 data FreerF f a r where
@@ -70,9 +72,9 @@ liftFreerF action = action `ThenF` id
 {-# INLINE liftFreerF #-}
 
 hoistFreerF :: (forall a. f a -> g a) -> FreerF f b c -> FreerF g b c
-hoistFreerF _ (ReturnF a) = ReturnF a
-hoistFreerF f (MapF g a)  = MapF g (f a)
-hoistFreerF f (ThenF r t) = ThenF (f r) t
+hoistFreerF _ (ReturnF result) = ReturnF result
+hoistFreerF f (MapF g step)  = MapF g (f step)
+hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
@@ -82,10 +84,12 @@ iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = iterFreerA ((algebra .) . flip fmap)
 
 iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
-iterFreer algebra = cata $ \ r -> case r of
-  ReturnF result        -> result
-  MapF transform action -> algebra action transform
-  ThenF action continue -> algebra action continue
+iterFreer algebra = go
+  where go (Return result) = result
+        go (Map transform action) = algebra action transform
+        go (Seq f action rest) = go (liftAp f action rest)
+        go (Then action continue) = algebra action (go . continue)
+        {-# INLINE go #-}
 {-# INLINE iterFreer #-}
 
 iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
@@ -110,6 +114,19 @@ runFreer :: forall f result
 runFreer refine = go
   where go :: Freer f x -> x
         go = iterFreer (flip ($) . go . refine)
+        {-# INLINE go #-}
+{-# INLINE runFreer #-}
+
+-- | Run a program to completion by repeated refinement in some 'Monad'ic context, and return its result.
+runFreerM :: forall f m result
+          .  Monad m
+          => (forall x. f x -> Freer f (m x))
+          -> Freer f result
+          -> m result
+runFreerM refine r = go (fmap pure r)
+  where go :: Freer f (m x) -> m x
+        go = iterFreer ((>>=) . go . refine)
+{-# INLINE runFreerM #-}
 
 -- | Run a single step of a program by refinement, returning 'Either' its @result@ or the next step.
 stepFreer :: (forall x. f x -> Freer f x)
@@ -121,6 +138,7 @@ stepFreer refine = go
         go (Seq f step1 step2) = go (liftAp f step1 step2)
         go (step `Then` yield) = Right (refine step >>= yield)
 {-# INLINE stepFreer #-}
+
 
 -- | Run a program to completion by repeated refinement, returning the list of steps up to and including the final result.
 --
@@ -145,9 +163,10 @@ foldFreer f = retract . hoistFreer f
 
 cutoff :: Integer -> Freer f a -> Freer f (Either (Freer f a) a)
 cutoff n r | n <= 0 = return (Left r)
-cutoff n (Seq f a b) = Seq (\ a -> bimap (fmap (f a)) (f a)) a (cutoff (pred n) b)
-cutoff n (Then a f) = Then a (cutoff (pred n) . f)
+cutoff n (Seq f step1 step2) = Seq (\ a -> bimap (fmap (f a)) (f a)) step1 (cutoff (pred n) step2)
+cutoff n (Then step yield) = Then step (cutoff (pred n) . yield)
 cutoff _ r = Right <$> r
+{-# INLINE cutoff #-}
 
 
 -- | Rewrite 'Applicative' parameters  as 'Then'. Typically used for normalization or linearization.
@@ -160,10 +179,11 @@ liftAp f a b = Then a (flip fmap b . f)
 
 instance Functor (Freer f) where
   fmap f = go
-    where go (Return a) = Return (f a)
-          go (Map g a) = Map (f . g) a
-          go (Seq g a b) = Seq ((f .) . g) a b
-          go (Then r t) = Then r (go . t)
+    where go (Return result) = Return (f result)
+          go (Map g step) = Map (f . g) step
+          go (Seq g step1 step2) = Seq ((f .) . g) step1 step2
+          go (Then step yield) = Then step (go . yield)
+          {-# INLINE go #-}
   {-# INLINE fmap #-}
 
 instance Applicative (Freer f) where
@@ -225,10 +245,10 @@ instance Traversable f => Traversable (Freer f) where
 
 instance Show1 f => Show1 (Freer f) where
   liftShowsPrec sp sl = go
-    where go d (Return a) = showsUnaryWith sp "Return" d a
-          go d (Map f a) = showsBinaryWith (const showString) (liftShowsPrec ((. f) . sp) (sl . fmap f)) "Map" d "_" a
-          go d (Seq _ a b) = showsBinaryWith (liftShowsPrec (showsPrec_ "_a") (showList_ "_a")) (liftShowsPrec (showsPrec_ "_b") (showList_ "_b")) "Seq _" d a b
-          go d (Then r t) = showsBinaryWith (liftShowsPrec ((. t) . go) (liftShowList sp sl . fmap t)) (const showString) "Then" d r "_"
+    where go d (Return result) = showsUnaryWith sp "Return" d result
+          go d (Map f step) = showsBinaryWith (const showString) (liftShowsPrec ((. f) . sp) (sl . fmap f)) "Map" d "_" step
+          go d (Seq _ step1 step2) = showsBinaryWith (liftShowsPrec (showsPrec_ "_a") (showList_ "_a")) (liftShowsPrec (showsPrec_ "_b") (showList_ "_b")) "Seq _" d step1 step2
+          go d (Then step yield) = showsBinaryWith (liftShowsPrec ((. yield) . go) (liftShowList sp sl . fmap yield)) (const showString) "Then" d step "_"
           showsPrec_ :: String -> Int -> a -> ShowS
           showsPrec_ s _ _ = showString s
           showList_ :: String -> [a] -> ShowS
@@ -238,13 +258,12 @@ instance (Show1 f, Show a) => Show (Freer f a) where
   showsPrec = liftShowsPrec showsPrec showList
 
 instance Eq1 f => Eq1 (Freer f) where
-  liftEq eqA = go
-    where go r s = case (r, s) of
-            (Return a1, Return a2) -> eqA a1 a2
-            (Map f1 a1, Map f2 a2) -> liftEq (\ a b -> f1 a `eqA` f2 b) a1 a2
-            (Seq f1 a1 b1, Seq f2 a2 b2) -> go (liftAp f1 a1 b1) (liftAp f2 a2 b2)
-            (Then r1 t1, Then r2 t2) -> liftEq (\ x1 x2 -> go (t1 x1) (t2 x2)) r1 r2
-            _ -> False
+  liftEq eqResult = go
+    where go (Return result1) (Return result2) = eqResult result1 result2
+          go (Map f1 step1) (Map f2 step2) = liftEq (\ a1 a2 -> f1 a1 `eqResult` f2 a2) step1 step2
+          go (Seq f1 a1 b1) (Seq f2 a2 b2) = go (liftAp f1 a1 b1) (liftAp f2 a2 b2)
+          go (Then step1 yield1) (Then step2 yield2) = liftEq (\ x1 x2 -> go (yield1 x1) (yield2 x2)) step1 step2
+          go _ _ = False
 
 instance (Eq1 f, Eq a) => Eq (Freer f a) where
   (==) = liftEq (==)
@@ -257,33 +276,30 @@ instance Functor (FreerF f a) where
   {-# INLINE fmap #-}
 
 instance Bifunctor (FreerF f) where
-  bimap f _ (ReturnF a) = ReturnF (f a)
-  bimap f _ (MapF g a) = MapF (f . g) a
-  bimap _ g (ThenF r t) = ThenF r (g . t)
+  bimap f _ (ReturnF result) = ReturnF (f result)
+  bimap f _ (MapF g step) = MapF (f . g) step
+  bimap _ g (ThenF step yield) = ThenF step (g . yield)
   {-# INLINE bimap #-}
 
 
 instance Foldable f => Foldable (FreerF f a) where
-  foldMap f g = case g of
-    ReturnF _ -> mempty
-    MapF _ _ -> mempty
-    ThenF r t -> foldMap (f . t) r
+  foldMap _ (ReturnF _) = mempty
+  foldMap _ (MapF _ _) = mempty
+  foldMap f (ThenF step yield) = foldMap (f . yield) step
   {-# INLINE foldMap #-}
 
 instance Traversable f => Traversable (FreerF f a) where
-  traverse f = go
-    where go (ReturnF a) = pure (ReturnF a)
-          go (MapF g a) = MapF g <$> traverse pure a
-          go (ThenF r t) = liftFreerF <$> traverse (f . t) r
+  traverse _ (ReturnF result) = pure (ReturnF result)
+  traverse _ (MapF g a) = MapF g <$> traverse pure a
+  traverse f (ThenF step yield) = liftFreerF <$> traverse (f . yield) step
   {-# INLINE traverse #-}
 
 
 instance Eq1 f => Eq2 (FreerF f) where
-  liftEq2 eqA eqB f1 f2 = case (f1, f2) of
-    (ReturnF a1, ReturnF a2) -> eqA a1 a2
-    (MapF f1 a1, MapF f2 a2) -> liftEq (\ a b -> f1 a `eqA` f2 b) a1 a2
-    (ThenF r1 t1, ThenF r2 t2) -> liftEq (\ x1 x2 -> eqB (t1 x1) (t2 x2)) r1 r2
-    _ -> False
+  liftEq2 eqResult eqRecur (ReturnF result1) (ReturnF result2) = eqResult result1 result2
+  liftEq2 eqResult _ (MapF f1 step1) (MapF f2 step2) = liftEq (\ a1 a2 -> f1 a1 `eqResult` f2 a2) step1 step2
+  liftEq2 _ eqRecur (ThenF step1 yield1) (ThenF step2 yield2) = liftEq (\ x1 x2 -> eqRecur (yield1 x1) (yield2 x2)) step1 step2
+  liftEq2 _ _ _ _ = False
 
 instance (Eq1 f, Eq a) => Eq1 (FreerF f a) where
   liftEq = liftEq2 (==)
