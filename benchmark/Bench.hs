@@ -74,3 +74,12 @@ fibM n
           x <- go (pred n)
           y <- go (pred (pred n))
           Right (x + y) `Then` return
+
+fibA :: Int -> Freer (Either String) Int
+fibA n
+  | n < 0 = (Left "negative") `Then` return
+  | otherwise = go n
+  where go :: Int -> Freer (Either String) Int
+        go 0 = return 0
+        go 1 = Right 1 `Then` return
+        go n = (+) <$> go (pred n) <*> go (pred (pred n))
