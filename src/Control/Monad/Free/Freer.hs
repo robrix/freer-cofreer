@@ -107,6 +107,8 @@ iterLookahead algebra = go
 
 
 -- | Run a program to completion by repeated refinement, and return its result.
+--
+-- > runFreer refine = iterFreer (flip ($) . runFreer refine . refine)
 runFreer :: forall f result
          .  (forall x. f x -> Freer f x)
          -> Freer f result
