@@ -58,10 +58,10 @@ hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
 iter :: Functor f => (f a -> a) -> Freer f a -> a
-iter algebra = iterFreer (fmap algebra . fmap)
+iter algebra = iterFreer (\ yield -> algebra . fmap yield)
 
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
-iterA algebra = iterFreerA (fmap algebra . fmap)
+iterA algebra = iterFreerA (\ yield -> algebra . fmap yield)
 
 iterFreer :: (forall x. (x -> a) -> f x -> a) -> Freer f a -> a
 iterFreer algebra = go
