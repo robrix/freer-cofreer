@@ -57,6 +57,9 @@ hoistFreerF _ (ReturnF result) = ReturnF result
 hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
+-- | Tear down a 'Freer' 'Monad' using iteration.
+--
+--   This is analogous to 'cata' where the 'Return'ed values are placeholders for the result of the computation.
 iter :: Functor f => (f a -> a) -> Freer f a -> a
 iter algebra = iterFreer (\ yield -> algebra . fmap yield)
 
