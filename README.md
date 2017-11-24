@@ -22,6 +22,11 @@ greeting = do
   write "Hi! What’s your name?\n"
   name <- read
   write $ "Pleased to meet you, " ++ name ++ "!"
+
+runPrompt :: Prompt a -> IO a
+runPrompt = iterFreer (\ yield instruction -> case instruction of
+  Write s -> putStrLn >>= yield
+  Read -> getLine >>= yield)
 ```
 
 The constraints placed on the constructors of `PromptF` mean that it doesn’t admit a `Functor` instance, and thus is not very useful with `Free`. With `Freer`, you get `Functor`, `Applicative`, and `Monad` instances with `PromptF` “for free,” complete with the majority of the API defined in `Control.Monad.Free.Freer`.
