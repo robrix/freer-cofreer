@@ -57,20 +57,32 @@ hoistFreerF _ (ReturnF result) = ReturnF result
 hoistFreerF f (ThenF step yield) = ThenF (f step) yield
 
 
+-- | Tear down a 'Freer' 'Monad' using iteration.
+--
+--   This is analogous to 'cata' where the 'Return'ed values are placeholders for the result of the computation.
 iter :: Functor f => (f a -> a) -> Freer f a -> a
-iter algebra = iterFreer ((algebra .) . flip fmap)
+iter algebra = iterFreer (\ yield -> algebra . fmap yield)
 
+-- | Tear down a 'Freer' 'Monad' using iteration in some 'Applicative' context.
+--
+--   This is analogous to 'cata' where the 'Return'ed values are placeholders for the result of the computation.
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
-iterA algebra = iterFreerA ((algebra .) . flip fmap)
+iterA algebra = iterFreerA (\ yield -> algebra . fmap yield)
 
-iterFreer :: (forall x. f x -> (x -> a) -> a) -> Freer f a -> a
+-- | Tear down a 'Freer' 'Monad' using iteration with an explicit continuation.
+--
+--   This is analogous to 'iter' with a continuation for the interior values, and is therefore suitable for defining interpreters for GADTs/types lacking a 'Functor' instance.
+iterFreer :: (forall x. (x -> a) -> f x -> a) -> Freer f a -> a
 iterFreer algebra = go
   where go (Return result) = result
-        go (Then action continue) = algebra action (go . continue)
+        go (Then action continue) = algebra (go . continue) action
         {-# INLINE go #-}
 {-# INLINE iterFreer #-}
 
-iterFreerA :: Applicative m => (forall x. f x -> (x -> m a) -> m a) -> Freer f a -> m a
+-- | Tear down a 'Freer' 'Monad' using iteration with an explicit continuation in some 'Applicative' context.
+--
+--   This is analogous to 'iterA' with a continuation for the interior values, and is therefore suitable for defining interpreters for GADTs/types lacking a 'Functor' instance.
+iterFreerA :: Applicative m => (forall x. (x -> m a) -> f x -> m a) -> Freer f a -> m a
 iterFreerA algebra r = iterFreer algebra (fmap pure r)
 {-# INLINE iterFreerA #-}
 
@@ -82,7 +94,7 @@ runFreer :: forall f result
          -> result
 runFreer refine = go
   where go :: Freer f x -> x
-        go = iterFreer (flip ($) . go . refine)
+        go = iterFreer ((. (go . refine)) . ($))
         {-# INLINE go #-}
 {-# INLINE runFreer #-}
 
@@ -94,7 +106,7 @@ runFreerM :: forall f m result
           -> m result
 runFreerM refine r = go (fmap pure r)
   where go :: Freer f (m x) -> m x
-        go = iterFreer ((>>=) . go . refine)
+        go = iterFreer ((. (go . refine)) . (=<<))
 {-# INLINE runFreerM #-}
 
 -- | Run a single step of a program by refinement, returning 'Either' its @result@ or the next step.
@@ -118,7 +130,7 @@ freerSteps refine = go
 
 
 retract :: Monad m => Freer m a -> m a
-retract = iterFreerA (>>=)
+retract = iterFreerA (=<<)
 {-# INLINE retract #-}
 
 foldFreer :: Monad m => (forall x. f x -> m x) -> Freer f a -> m a
