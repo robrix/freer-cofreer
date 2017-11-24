@@ -79,6 +79,9 @@ iterFreer algebra = go
         {-# INLINE go #-}
 {-# INLINE iterFreer #-}
 
+-- | Tear down a 'Freer' 'Monad' using iteration with an explicit continuation in some 'Applicative' context.
+--
+--   This is analogous to 'iterA' with a continuation for the interior values, and is therefore suitable for defining interpreters for GADTs/types lacking a 'Functor' instance.
 iterFreerA :: Applicative m => (forall x. (x -> m a) -> f x -> m a) -> Freer f a -> m a
 iterFreerA algebra r = iterFreer algebra (fmap pure r)
 {-# INLINE iterFreerA #-}
