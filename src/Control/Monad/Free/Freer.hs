@@ -69,6 +69,9 @@ iter algebra = iterFreer (\ yield -> algebra . fmap yield)
 iterA :: (Functor f, Applicative m) => (f (m a) -> m a) -> Freer f a -> m a
 iterA algebra = iterFreerA (\ yield -> algebra . fmap yield)
 
+-- | Tear down a 'Freer' 'Monad' using iteration with an explicit continuation.
+--
+--   This is analogous to 'iter' with a continuation for the interior values, and is therefore suitable for defining interpreters for GADTs/types lacking a 'Functor' instance.
 iterFreer :: (forall x. (x -> a) -> f x -> a) -> Freer f a -> a
 iterFreer algebra = go
   where go (Return result) = result
